@@ -54,6 +54,18 @@ namespace
 	std::wstring g_pendingFilePath;
 	std::vector<ProjectPtr> g_menuProjects; // parallel to ID_ADD_TO_PROJECT_BASE + i
 
+	// One-shot latch, separate from g_pending: WM_INITMENUPOPUP fires for
+	// *every* popup that opens during a menu-tracking session, including
+	// each submenu the native menu itself has (Open into, Move Document,
+	// Apply Color to Tab, ...) and - critically - our own injected "Add to
+	// Project" submenu the instant the user hovers it. Without this latch,
+	// that second case re-injects "Add to Project" into itself every time
+	// it's hovered, nesting deeper forever. It's set alongside g_pending and
+	// consumed (cleared) the first time a popup is actually seen, so only
+	// the top-level tab context menu - never any submenu, ours or native -
+	// ever gets the item added.
+	bool g_readyToInject = false;
+
 	std::wstring filePathForBufferId(UINT_PTR bufferId)
 	{
 		if (bufferId == 0)
@@ -172,6 +184,7 @@ namespace
 	void prepareForPossibleMenu(HWND tabHwnd, POINT screenPt)
 	{
 		g_pending = false;
+		g_readyToInject = false;
 		g_pendingFilePath.clear();
 
 		POINT clientPt = screenPt;
@@ -189,6 +202,7 @@ namespace
 
 		g_pendingFilePath = path;
 		g_pending = true;
+		g_readyToInject = true;
 	}
 
 	// Shared by every subclassed window (tab bars and relay-only
@@ -233,30 +247,21 @@ namespace
 			case WM_INITMENUPOPUP:
 			{
 				// HIWORD(lParam) != 0 means this is a window's system menu,
-				// never our target.
-				if (g_pending && HIWORD(lParam) == 0)
+				// never our target. g_readyToInject is consumed (see its
+				// declaration) so only the very first popup shown after a
+				// right-click - the top-level tab context menu itself -
+				// ever gets the item added, never a submenu opening later
+				// in the same tracking session (including our own).
+				if (g_readyToInject && HIWORD(lParam) == 0)
 				{
 					HMENU hMenu = reinterpret_cast<HMENU>(wParam);
 					if (hMenu && ::GetMenuItemCount(hMenu) > 0)
 					{
-						// Only the first window to see this particular popup
-						// should inject into it. Once injected, drop
-						// g_pending's "armed" state for the popup part (but
-						// keep the file path around) by checking whether our
-						// own item is already there.
-						bool alreadyInjected = false;
-						int count = ::GetMenuItemCount(hMenu);
-						wchar_t label[64] = { 0 };
-						if (::GetMenuStringW(hMenu, count - 1, label, 64, MF_BYPOSITION) > 0)
-							alreadyInjected = (wcscmp(label, L"Add to Project") == 0);
-
-						if (!alreadyInjected)
-						{
-							::AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-							HMENU sub = buildAddToProjectSubmenu();
-							::AppendMenuW(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(sub), L"Add to Project");
-						}
+						::AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+						HMENU sub = buildAddToProjectSubmenu();
+						::AppendMenuW(hMenu, MF_POPUP, reinterpret_cast<UINT_PTR>(sub), L"Add to Project");
 					}
+					g_readyToInject = false;
 				}
 				break;
 			}
@@ -276,6 +281,7 @@ namespace
 
 			case WM_EXITMENULOOP:
 				g_pending = false;
+				g_readyToInject = false;
 				break;
 
 			case WM_NCDESTROY:

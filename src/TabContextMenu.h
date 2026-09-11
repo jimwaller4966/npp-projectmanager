@@ -8,12 +8,16 @@
 // "Plugins" submenu, never the tab bar's own context menu. What *is*
 // documented, standard Win32 behavior is that TrackPopupMenu() sends
 // WM_INITMENUPOPUP to the menu's owner window just before the menu is shown,
-// with the about-to-be-displayed HMENU as wParam - so if we subclass the tab
-// bar control(s) themselves (via the standard, chain-safe SetWindowSubclass
-// API, which never permanently replaces anything and un-does itself cleanly)
-// we can catch that notification and append our own item(s) to Notepad++'s
-// menu an instant before it appears, then catch the resulting WM_COMMAND if
-// the user picks one of them.
+// with the about-to-be-displayed HMENU as wParam - so if we subclass the
+// right window (via the standard, chain-safe SetWindowSubclass API, which
+// never permanently replaces anything and un-does itself cleanly) we can
+// catch that notification and append our own item(s) to Notepad++'s menu an
+// instant before it appears, then catch the resulting WM_COMMAND if the user
+// picks one of them. There's no documented way to ask Notepad++ which window
+// it actually passes as that owner, so this subclasses several candidates at
+// once - the tab bar control(s) themselves, their parent container, and
+// Notepad++'s main window - and only whichever one turns out to be the real
+// owner ever does anything; the rest are harmless no-ops.
 //
 // Because this leans on undocumented, unverified behavior of Notepad++'s
 // internals rather than a published API, treat it as best-effort: if a

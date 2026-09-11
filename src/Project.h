@@ -36,6 +36,19 @@ public:
 	void removeFolder(const std::wstring& folderPath);
 	void removeFile(const std::wstring& filePath);
 
+	// Updates any tracked folder, loose file, or remembered-session entry
+	// that matches 'oldPath' (case-insensitively) to 'newPath' instead.
+	// Used to keep a project in sync when Notepad++ itself renames a file
+	// (its tab context menu's Rename command). Returns true if anything in
+	// this project actually changed.
+	bool renamePath(const std::wstring& oldPath, const std::wstring& newPath);
+
+	// Removes any tracked folder, loose file, or remembered-session entry
+	// that matches 'path' (case-insensitively). Used to keep a project in
+	// sync when Notepad++ itself deletes a file (its tab context menu's
+	// "Move to Recycle Bin" command). Returns true if anything changed.
+	bool forgetPath(const std::wstring& path);
+
 	// Replaces the remembered "open files" session list wholesale.
 	void setOpenFiles(std::vector<std::wstring> paths);
 

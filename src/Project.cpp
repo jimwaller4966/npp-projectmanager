@@ -54,6 +54,66 @@ void Project::removeFile(const std::wstring& filePath)
 	_dirty = true;
 }
 
+namespace
+{
+	// Replaces every case-insensitive match of 'oldPath' in 'v' with
+	// 'newPath'. Returns true if anything was actually replaced.
+	bool renameInPlace(std::vector<std::wstring>& v, const std::wstring& oldPath, const std::wstring& newPath)
+	{
+		bool changed = false;
+		for (auto& p : v)
+		{
+			if (StrUtil::iequals(p, oldPath))
+			{
+				p = newPath;
+				changed = true;
+			}
+		}
+		return changed;
+	}
+}
+
+bool Project::renamePath(const std::wstring& oldPath, const std::wstring& newPath)
+{
+	if (oldPath.empty() || newPath.empty() || StrUtil::iequals(oldPath, newPath))
+		return false;
+
+	// A tracked root folder is stored without its trailing slash (see
+	// addFolder), but 'oldPath'/'newPath' here always come from a renamed
+	// *file*, so only _files and _openFiles are realistic targets - _folders
+	// is included anyway, harmlessly, in case a future caller ever renames a
+	// tracked folder itself.
+	bool changed = false;
+	if (renameInPlace(_folders, StrUtil::stripTrailingSlash(oldPath), StrUtil::stripTrailingSlash(newPath)))
+		changed = true;
+	if (renameInPlace(_files, oldPath, newPath))
+		changed = true;
+	if (renameInPlace(_openFiles, oldPath, newPath))
+		changed = true;
+
+	if (changed)
+		_dirty = true;
+	return changed;
+}
+
+bool Project::forgetPath(const std::wstring& path)
+{
+	if (path.empty())
+		return false;
+
+	bool changed = containsPath(_folders, StrUtil::stripTrailingSlash(path))
+		|| containsPath(_files, path)
+		|| containsPath(_openFiles, path);
+
+	removePath(_folders, StrUtil::stripTrailingSlash(path));
+	removePath(_files, path);
+	removePath(_openFiles, path);
+
+	if (changed)
+		_dirty = true;
+	return changed;
+}
+
 void Project::setOpenFiles(std::vector<std::wstring> paths)
 {
 	_openFiles = std::move(paths);

@@ -23,6 +23,25 @@ namespace
 	bool g_panelRegistered = false;
 	std::wstring g_configDir;
 
+	// Bridges Notepad++'s "before" / "after" pairs of file rename/delete
+	// notifications: the "before" one is the only point at which the file's
+	// *old* path can still be read back (via NPPM_GETFULLPATHFROMBUFFERID),
+	// so it's captured here and consumed by the matching "after" one. Only
+	// one rename or delete can ever be in flight at a time, so a single slot
+	// each is enough.
+	std::wstring g_pendingRenamePath;
+	UINT_PTR g_pendingRenameBufferId = 0;
+	std::wstring g_pendingDeletePath;
+	UINT_PTR g_pendingDeleteBufferId = 0;
+
+	std::wstring fullPathForBufferId(UINT_PTR bufferId)
+	{
+		wchar_t path[MAX_PATH * 4] = { 0 };
+		::SendMessage(g_nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID,
+			static_cast<WPARAM>(bufferId), reinterpret_cast<LPARAM>(path));
+		return path;
+	}
+
 	// Index of each command within g_funcItems — also doubles as the
 	// docking dialog's "dlgID" for the toggle-panel command (see
 	// NPPM_DMMREGASDCKDLG's contract: dlgID must be the index of the
@@ -193,6 +212,78 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification* notifyCode)
 		{
 			if (!g_configDir.empty())
 				g_projectManager.saveLastSession(g_configDir);
+			break;
+		}
+
+		// --- keep projects in sync when Notepad++ itself renames or ------
+		// deletes a file (its tab context menu's Rename / Move to Recycle
+		// Bin commands) -----------------------------------------------------
+		//
+		// idFrom is the file's BufferID in all four of these, and that ID
+		// stays the same across a rename (it's still the same open
+		// document, just pointing at a different path) - so the "before"
+		// notification's path lookup and the "after" one's are paired up by
+		// matching BufferID.
+
+		case NPPN_FILEBEFORERENAME:
+			g_pendingRenameBufferId = static_cast<UINT_PTR>(notifyCode->nmhdr.idFrom);
+			g_pendingRenamePath = fullPathForBufferId(g_pendingRenameBufferId);
+			break;
+
+		case NPPN_FILERENAMECANCEL:
+			g_pendingRenameBufferId = 0;
+			g_pendingRenamePath.clear();
+			break;
+
+		case NPPN_FILERENAMED:
+		{
+			UINT_PTR bufferId = static_cast<UINT_PTR>(notifyCode->nmhdr.idFrom);
+			if (bufferId == g_pendingRenameBufferId && !g_pendingRenamePath.empty())
+			{
+				std::wstring newPath = fullPathForBufferId(bufferId);
+				if (!newPath.empty())
+				{
+					bool changed = false;
+					for (auto& project : g_projectManager.projects())
+					{
+						if (project->renamePath(g_pendingRenamePath, newPath))
+							changed = true;
+					}
+					if (changed)
+						g_projectPanel.rebuildTree();
+				}
+			}
+			g_pendingRenameBufferId = 0;
+			g_pendingRenamePath.clear();
+			break;
+		}
+
+		case NPPN_FILEBEFOREDELETE:
+			g_pendingDeleteBufferId = static_cast<UINT_PTR>(notifyCode->nmhdr.idFrom);
+			g_pendingDeletePath = fullPathForBufferId(g_pendingDeleteBufferId);
+			break;
+
+		case NPPN_FILEDELETEFAILED:
+			g_pendingDeleteBufferId = 0;
+			g_pendingDeletePath.clear();
+			break;
+
+		case NPPN_FILEDELETED:
+		{
+			UINT_PTR bufferId = static_cast<UINT_PTR>(notifyCode->nmhdr.idFrom);
+			if (bufferId == g_pendingDeleteBufferId && !g_pendingDeletePath.empty())
+			{
+				bool changed = false;
+				for (auto& project : g_projectManager.projects())
+				{
+					if (project->forgetPath(g_pendingDeletePath))
+						changed = true;
+				}
+				if (changed)
+					g_projectPanel.rebuildTree();
+			}
+			g_pendingDeleteBufferId = 0;
+			g_pendingDeletePath.clear();
 			break;
 		}
 

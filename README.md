@@ -33,6 +33,12 @@ plugin interface — not a script or a macro.
   later reopens that same set.
 - Whatever projects you had open are remembered across Notepad++ restarts
   automatically.
+- If you **rename or delete a file from within Notepad++** (its tab's own
+  Rename / Move to Recycle Bin commands), any project tracking that file is
+  updated (or the entry removed) automatically - no more stale entries you
+  have to clean up by hand. Renaming/deleting a file some other way (in
+  Windows Explorer, say, while Notepad++ isn't the one doing it) isn't
+  detected; use the folder's **Refresh** command in that case.
 - Everything is also reachable from the **Plugins → Project Manager** menu,
   for when you don't want to touch the panel directly.
 

@@ -114,6 +114,33 @@ bool Project::forgetPath(const std::wstring& path)
 	return changed;
 }
 
+bool Project::pruneMissing()
+{
+	auto exists = [](const std::wstring& p)
+	{
+		return ::GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES;
+	};
+
+	auto pruneVector = [&](std::vector<std::wstring>& v)
+	{
+		size_t before = v.size();
+		v.erase(std::remove_if(v.begin(), v.end(), [&](const std::wstring& p) { return !exists(p); }), v.end());
+		return v.size() != before;
+	};
+
+	// Order matters not at all here - each vector is independent - but keep
+	// all three calls unconditional (no short-circuiting with ||) so a
+	// missing folder doesn't hide a missing file behind it.
+	bool foldersChanged = pruneVector(_folders);
+	bool filesChanged = pruneVector(_files);
+	bool openFilesChanged = pruneVector(_openFiles);
+
+	bool changed = foldersChanged || filesChanged || openFilesChanged;
+	if (changed)
+		_dirty = true;
+	return changed;
+}
+
 void Project::setOpenFiles(std::vector<std::wstring> paths)
 {
 	_openFiles = std::move(paths);

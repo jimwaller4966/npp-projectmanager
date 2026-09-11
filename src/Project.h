@@ -49,6 +49,18 @@ public:
 	// "Move to Recycle Bin" command). Returns true if anything changed.
 	bool forgetPath(const std::wstring& path);
 
+	// Drops any tracked folder, loose file, or remembered-session entry that
+	// no longer exists on disk, checked directly against the filesystem.
+	// This is the reliable, no-assumptions-about-Notepad++'s-internals fix
+	// for a stale entry left behind by a rename or delete done *outside*
+	// Notepad++ (Explorer, another program, a moved network share, ...) -
+	// renamePath()/forgetPath() above only catch it when Notepad++ itself
+	// did the renaming/deleting. Called every time the panel's tree is
+	// rebuilt, so a gone file simply disappears the next time anything
+	// refreshes rather than lingering until someone notices and removes it
+	// by hand. Returns true if anything was dropped.
+	bool pruneMissing();
+
 	// Replaces the remembered "open files" session list wholesale.
 	void setOpenFiles(std::vector<std::wstring> paths);
 

@@ -273,6 +273,15 @@ void ProjectPanel::rebuildTree()
 	if (!_hTreeView || !_manager)
 		return;
 
+	// Drop any tracked file/folder that no longer exists on disk before
+	// drawing anything - checked directly against the filesystem, so a
+	// stale entry disappears here regardless of what renamed or deleted it
+	// (Notepad++, Explorer, anything else). This runs on every rebuild,
+	// which happens after essentially every action in the panel, so a gone
+	// file clears itself out rather than lingering until manually removed.
+	for (const auto& project : _manager->projects())
+		project->pruneMissing();
+
 	// Remember which projects were expanded so a rebuild after e.g. adding a
 	// file doesn't visually collapse everything back to just the roots.
 	// (Kept simple: we just re-expand every project root — folders inside

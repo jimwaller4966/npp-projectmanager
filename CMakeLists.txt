@@ -25,7 +25,6 @@ add_library(NppProjectManager SHARED
 	src/ProjectManager.cpp
 	src/Project.cpp
 	src/ProjectPanel.cpp
-	src/TabContextMenu.cpp
 	src/PluginResource.rc
 	sdk/DockingFeature/StaticDialog.cpp
 )

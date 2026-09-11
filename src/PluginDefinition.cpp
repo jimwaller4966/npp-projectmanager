@@ -1,7 +1,6 @@
 #include "PluginDefinition.h"
 #include "ProjectManager.h"
 #include "ProjectPanel.h"
-#include "TabContextMenu.h"
 #include "resource.h"
 
 #include <cwchar>
@@ -200,11 +199,6 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification* notifyCode)
 			ensurePanelCreated();
 			g_projectManager.loadLastSession(g_configDir);
 			g_projectPanel.rebuildTree();
-			// Best-effort: adds "Add to Project" to Notepad++'s native tab
-			// right-click menu. See TabContextMenu.h for why this can't be
-			// done through an official API, and for the fallback if it
-			// doesn't take on some future Notepad++ version.
-			TabContextMenu::install(g_nppData, &g_projectManager, &g_projectPanel);
 			break;
 		}
 
@@ -318,10 +312,11 @@ void cmdCloseProject() { g_projectPanel.menuCloseProject(); }
 void cmdAddFolderToProject() { g_projectPanel.menuAddFolder(); }
 void cmdAddFilesToProject() { g_projectPanel.menuAddFiles(); }
 
-// Fully-documented-API equivalent of the "Add to Project" entry this plugin
-// also injects into Notepad++'s native tab context menu (TabContextMenu.cpp):
-// same result, reached from the Plugins menu instead of a tab's right-click,
-// and guaranteed to keep working even if that injection ever stops.
+// Adds whichever file is in the currently active tab to a project. This is
+// the supported way to do that - a native tab-bar right-click entry was
+// tried and pulled back out (see the project's history/README): Notepad++
+// has no official plugin API for adding to that menu, and the undocumented
+// workaround needed to fake it proved unreliable in practice.
 void cmdAddActiveTabToProject()
 {
 	wchar_t path[MAX_PATH * 4] = { 0 };

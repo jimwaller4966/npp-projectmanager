@@ -1,0 +1,30 @@
+// PluginResource.rc — the only resource this plugin needs: an empty dialog
+// template used as the docking panel's container window. The tree view
+// control that actually fills the panel is created at runtime (see
+// ProjectPanel::run_dlgProc, WM_INITDIALOG) and resized to the panel's
+// client area on WM_SIZE, so no controls need to be laid out here.
+#include <windows.h>
+#include "resource.h"
+
+// The CAPTION text below is never shown as a title bar (the dialog has no
+// WS_CAPTION style — it's an embedded docking child), but DockingDlgInterface
+// reads it via GetWindowText() to name the panel's tab in Notepad++'s docking
+// UI, so it still needs to be set.
+IDD_PROJECTPANEL DIALOGEX 0, 0, 160, 240
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_CLIPCHILDREN
+CAPTION "Project Manager"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+END
+
+// Small reusable "type a name" prompt used for New Project / Rename Project.
+IDD_INPUTBOX DIALOGEX 0, 0, 220, 80
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Notepad++ Project Manager"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "", IDC_INPUT_PROMPT, 7, 7, 206, 16
+    EDITTEXT        IDC_INPUT_EDIT, 7, 26, 206, 14, ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "OK", IDOK, 94, 58, 60, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 158, 58, 55, 14
+END

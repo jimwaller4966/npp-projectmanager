@@ -21,6 +21,13 @@ plugin interface — not a script or a macro.
 - Right-click for a context menu: add/remove folders and files, open every
   file in a project at once, refresh a folder, reveal a file in Explorer,
   etc.
+- **Right-click any open document tab** (Notepad++'s own tab bar, not the
+  panel) and pick **Add to Project** to add that one file to a project
+  without leaving what you're doing - no picker dialog needed. It lists
+  every open project plus **New Project...**. There's also a
+  **Plugins → Project Manager → Add Active Tab to Project** menu command
+  that does the exact same thing for whichever tab is currently active, as
+  a guaranteed fallback (see the note below).
 - **Save Session** snapshots exactly which files are currently open in
   Notepad++ (both views) into the project, so **Open All Project Files**
   later reopens that same set.
@@ -28,6 +35,17 @@ plugin interface — not a script or a macro.
   automatically.
 - Everything is also reachable from the **Plugins → Project Manager** menu,
   for when you don't want to touch the panel directly.
+
+> **About the tab right-click integration.** Notepad++ doesn't offer an
+> official plugin API for adding entries to its own tab bar's context menu
+> (it only exposes handles to the main menu bar and the Plugins submenu).
+> `src/TabContextMenu.cpp` gets there anyway by leaning on standard, documented
+> Win32 menu behavior instead - it's a legitimate technique, just not one
+> Notepad++ itself promises to keep working forever. If a future Notepad++
+> version changes how its tab bar shows that menu and the item stops
+> appearing, nothing else in the plugin is affected, and **Plugins → Project
+> Manager → Add Active Tab to Project** keeps working regardless, since it
+> only uses fully documented `NPPM_*` messages.
 
 ## Repository layout
 
@@ -39,6 +57,7 @@ src/                        The plugin's own source (yours to read/modify)
   Project.h/.cpp                One project: folders/files/session, .nppproj load & save
   ProjectManager.h/.cpp          Owns all open projects; talks to Notepad++ (open files, etc.)
   ProjectPanel.h/.cpp             The dockable tree view, its context menu, dialogs
+  TabContextMenu.h/.cpp           Injects "Add to Project" into Notepad++'s native tab-bar menu
   StrUtil.h                      UTF-8/UTF-16 helpers
   WinFileIO.h                    Small Win32-based whole-file read/write helpers
   resource.h / PluginResource.rc  The two tiny dialog templates the panel needs

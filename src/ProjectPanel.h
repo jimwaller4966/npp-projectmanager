@@ -54,6 +54,24 @@ public:
 	void menuOpenAllFiles() { withActiveProject(&ProjectPanel::cmdOpenAllFiles); }
 	void menuSaveSession() { withActiveProject(&ProjectPanel::cmdSaveSession); }
 
+	// Adds 'filePath' to 'project' and refreshes the tree. Public because it
+	// is also the target of the "Add to Project" entry this plugin injects
+	// into Notepad++'s native tab-bar context menu (see TabContextMenu.cpp),
+	// which already knows exactly which project the user picked.
+	void addFileToProject(const ProjectPtr& project, const std::wstring& filePath);
+
+	// Prompts for a brand-new project's name (and, once created, a save
+	// location), adds 'filePath' to it, and refreshes the tree. Used by the
+	// "New Project..." entry in both the tab-bar context menu and the
+	// Plugins-menu fallback below.
+	void addFileToNewProject(const std::wstring& filePath);
+
+	// Plugins-menu fallback for "add this file to a project", used by the
+	// "Add Active Tab to Project" command: adds to the active project if one
+	// is unambiguous, offers to create a project if none are open yet, or
+	// asks the user to pick one first if there's more than one candidate.
+	void menuAddActiveTabToProject(const std::wstring& filePath);
+
 protected:
 	INT_PTR CALLBACK run_dlgProc(UINT message, WPARAM wParam, LPARAM lParam) override;
 

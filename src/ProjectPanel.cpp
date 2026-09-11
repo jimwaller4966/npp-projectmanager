@@ -806,6 +806,52 @@ void ProjectPanel::cmdShowFileInExplorer(const std::wstring& filePath)
 	::ShellExecuteW(_hSelf, L"open", L"explorer.exe", param.c_str(), nullptr, SW_SHOWNORMAL);
 }
 
+void ProjectPanel::addFileToProject(const ProjectPtr& project, const std::wstring& filePath)
+{
+	if (!project || filePath.empty())
+		return;
+	project->addFile(filePath);
+	rebuildTree();
+}
+
+void ProjectPanel::addFileToNewProject(const std::wstring& filePath)
+{
+	if (filePath.empty())
+		return;
+
+	std::wstring name;
+	if (!showInputBox(_hSelf, getHinst(), L"New Project", L"Project name:", name))
+		return;
+
+	auto project = _manager->newProject(name);
+	project->addFile(filePath);
+	rebuildTree();
+	cmdSaveProjectAs(project);
+}
+
+void ProjectPanel::menuAddActiveTabToProject(const std::wstring& filePath)
+{
+	if (filePath.empty() || !_manager)
+		return;
+
+	// No projects open at all yet: go straight to "create one", rather than
+	// telling the user to go create one first.
+	if (_manager->projects().empty())
+	{
+		addFileToNewProject(filePath);
+		return;
+	}
+
+	ProjectPtr project = activeProject();
+	if (!project)
+	{
+		warnNoActiveProject();
+		return;
+	}
+
+	addFileToProject(project, filePath);
+}
+
 void ProjectPanel::withActiveProject(void (ProjectPanel::*fn)(const ProjectPtr&))
 {
 	ProjectPtr project = activeProject();

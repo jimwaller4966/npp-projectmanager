@@ -25,6 +25,7 @@ add_library(NppProjectManager SHARED
 	src/ProjectManager.cpp
 	src/Project.cpp
 	src/ProjectPanel.cpp
+	src/TabContextMenu.cpp
 	src/PluginResource.rc
 	sdk/DockingFeature/StaticDialog.cpp
 )
@@ -40,6 +41,7 @@ target_compile_definitions(NppProjectManager PRIVATE
 	_UNICODE
 	WIN32_LEAN_AND_MEAN
 	NOMINMAX
+	_WIN32_WINNT=0x0601   # Windows 7+: guarantees SetWindowSubclass (comctl32) is declared
 )
 
 target_link_libraries(NppProjectManager PRIVATE

@@ -1,6 +1,7 @@
 #include "PluginDefinition.h"
 #include "ProjectManager.h"
 #include "ProjectPanel.h"
+#include "TabContextMenu.h"
 #include "resource.h"
 
 #include <cwchar>
@@ -36,6 +37,7 @@ namespace
 		FI_SEP_1,
 		FI_ADD_FOLDER,
 		FI_ADD_FILES,
+		FI_ADD_ACTIVE_TAB,
 		FI_OPEN_ALL_FILES,
 		FI_CLOSE_PROJECT,
 		FI_SEP_2,
@@ -87,6 +89,7 @@ namespace
 		setSeparator(FI_SEP_1);
 		setItem(FI_ADD_FOLDER, L"Add Folder to Project...", cmdAddFolderToProject);
 		setItem(FI_ADD_FILES, L"Add Files to Project...", cmdAddFilesToProject);
+		setItem(FI_ADD_ACTIVE_TAB, L"Add Active Tab to Project", cmdAddActiveTabToProject);
 		setItem(FI_OPEN_ALL_FILES, L"Open All Project Files", cmdOpenAllProjectFiles);
 		setItem(FI_CLOSE_PROJECT, L"Close Project", cmdCloseProject);
 		setSeparator(FI_SEP_2);
@@ -178,6 +181,11 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification* notifyCode)
 			ensurePanelCreated();
 			g_projectManager.loadLastSession(g_configDir);
 			g_projectPanel.rebuildTree();
+			// Best-effort: adds "Add to Project" to Notepad++'s native tab
+			// right-click menu. See TabContextMenu.h for why this can't be
+			// done through an official API, and for the fallback if it
+			// doesn't take on some future Notepad++ version.
+			TabContextMenu::install(g_nppData, &g_projectManager, &g_projectPanel);
 			break;
 		}
 
@@ -218,6 +226,23 @@ void cmdSaveSession() { g_projectPanel.menuSaveSession(); }
 void cmdCloseProject() { g_projectPanel.menuCloseProject(); }
 void cmdAddFolderToProject() { g_projectPanel.menuAddFolder(); }
 void cmdAddFilesToProject() { g_projectPanel.menuAddFiles(); }
+
+// Fully-documented-API equivalent of the "Add to Project" entry this plugin
+// also injects into Notepad++'s native tab context menu (TabContextMenu.cpp):
+// same result, reached from the Plugins menu instead of a tab's right-click,
+// and guaranteed to keep working even if that injection ever stops.
+void cmdAddActiveTabToProject()
+{
+	wchar_t path[MAX_PATH * 4] = { 0 };
+	::SendMessage(g_nppData._nppHandle, NPPM_GETFULLCURRENTPATH,
+		MAX_PATH * 4, reinterpret_cast<LPARAM>(path));
+	if (path[0] == L'\0')
+		return;
+
+	ensurePanelCreated();
+	g_projectPanel.menuAddActiveTabToProject(path);
+}
+
 void cmdOpenAllProjectFiles() { g_projectPanel.menuOpenAllFiles(); }
 
 void cmdTogglePanel()

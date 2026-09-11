@@ -35,6 +35,7 @@ void cmdSaveSession();
 void cmdCloseProject();
 void cmdAddFolderToProject();
 void cmdAddFilesToProject();
+void cmdAddActiveTabToProject();
 void cmdOpenAllProjectFiles();
 void cmdTogglePanel();
 void cmdAbout();
